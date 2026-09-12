@@ -418,6 +418,7 @@
 
   <div id="studentsList"></div>
 
+  <button class="btn btn-outline btn-block" id="addStudentBtn" style="margin-bottom:10px;">➕ إضافة طالب جديد</button>
   <p class="empty-note">تقدري تعدّلي اسم أي طالب أو رقمه بالضغط عليه مباشرة.</p>
 
   <div class="log-card">
@@ -1319,6 +1320,23 @@ async function resetPagesTotals(){
   showSaveStatus('✅ تم تصفير صفحات الحفظ والمراجعة', false);
 }
 
+function nextStudentId(){
+  let max = 0;
+  config.students.forEach(s=>{
+    const m = /^s(\d+)$/.exec(s.id || '');
+    if(m){ const n = parseInt(m[1],10); if(n > max) max = n; }
+  });
+  return 's' + (max + 1);
+}
+
+async function addNewStudent(){
+  const id = nextStudentId();
+  config.students.push({ id, name:'', phone:'', totalPoints:0, totalPagesNew:0, totalPagesReview:0 });
+  await saveConfig();
+  renderStudents();
+  showSaveStatus('✅ تمت إضافة بطاقة طالب جديد، عبّي اسمه ورقمه', false);
+}
+
 async function onDateChange(){
   currentDate = document.getElementById('dateInput').value || currentDate;
   document.getElementById('dayTag').textContent = fmtDateLabel(currentDate);
@@ -1335,6 +1353,7 @@ async function init(){
   });
   document.getElementById('sendGroupBtn').addEventListener('click', sendToGroup);
   document.getElementById('resetPagesBtn').addEventListener('click', resetPagesTotals);
+  document.getElementById('addStudentBtn').addEventListener('click', addNewStudent);
   initLeaderboardTabs();
   renderLeaderboard();
 

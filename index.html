@@ -342,7 +342,20 @@
     font-weight:700;
     cursor:pointer;
   }
-  .halaqah-tabs{display:flex;gap:6px;margin:0 0 14px;flex-wrap:wrap;}
+  .markaz-title{
+    text-align:center;
+    font-family:'Amiri', serif;
+    font-weight:700;
+    font-size:15px;
+    color:var(--green-deep);
+    background:var(--gold-soft);
+    border-radius:20px;
+    padding:6px 16px;
+    display:inline-block;
+    margin:0 auto 10px;
+    width:fit-content;
+  }
+  .halaqah-tabs{display:flex;gap:6px;margin:0 0 14px;flex-wrap:wrap;justify-content:center;}
   .halaqah-tab-btn{
     border:1.5px solid var(--sand-deep);
     background:var(--sand);
@@ -435,6 +448,90 @@
   }
   .lock-card input:focus{outline:2px solid var(--gold-soft);}
   .lock-error{color:var(--danger);font-size:12.5px;margin-top:10px;display:none;}
+
+  .balance-line{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    font-size:13px;
+    font-weight:700;
+    color:var(--gold);
+    margin:2px 0 10px;
+  }
+  .balance-reset-btn{
+    border:1px solid var(--sand-deep);
+    background:var(--sand);
+    color:#8a9088;
+    border-radius:7px;
+    padding:2px 8px;
+    font-size:11px;
+    font-weight:700;
+    cursor:pointer;
+    font-family:inherit;
+  }
+
+  .draw-card{
+    background:linear-gradient(135deg, #fff 0%, #fbf3e2 100%);
+    border:1px solid var(--gold-soft);
+    border-radius:var(--radius);
+    padding:16px;
+    margin-bottom:16px;
+  }
+  .draw-card h3{margin:0 0 8px;font-size:15px;color:var(--green-deep);}
+  .draw-pool-line{font-size:12.5px;color:#6b7a70;margin-bottom:10px;}
+  .draw-row{display:flex;gap:8px;margin-bottom:8px;}
+  .draw-row select{
+    flex:1;
+    border:1px solid var(--sand-deep);
+    border-radius:9px;
+    padding:9px 10px;
+    font-family:inherit;
+    font-size:13.5px;
+    background:var(--sand);
+    color:var(--ink);
+  }
+
+  .draw-modal{
+    position:fixed;
+    inset:0;
+    background:rgba(31,42,36,0.75);
+    display:none;
+    align-items:center;
+    justify-content:center;
+    z-index:900;
+    padding:20px;
+  }
+  .draw-modal-card{
+    background:#fff;
+    border-radius:18px;
+    padding:34px 24px;
+    max-width:320px;
+    width:100%;
+    text-align:center;
+    box-shadow:0 20px 60px rgba(0,0,0,.35);
+  }
+  .draw-count{
+    font-family:'Amiri', serif;
+    font-size:72px;
+    font-weight:700;
+    color:var(--gold);
+    animation:drawPop .5s ease;
+  }
+  @keyframes drawPop{
+    0%{ transform:scale(.3); opacity:0; }
+    60%{ transform:scale(1.15); opacity:1; }
+    100%{ transform:scale(1); }
+  }
+  .draw-result{
+    font-size:22px;
+    font-weight:700;
+    color:var(--green-deep);
+    line-height:1.8;
+    animation:drawPop .4s ease;
+  }
+  .draw-result span{font-size:15px;color:#6b7a70;font-weight:400;}
+  .draw-empty{font-size:17px;font-weight:700;color:var(--danger);}
+  .draw-close-btn{margin-top:18px;}
 </style>
 </head>
 <body>
@@ -451,7 +548,7 @@
 </div>
 
 <script>
-(function(){
+document.addEventListener('DOMContentLoaded', function(){
   var APP_PASSWORD = '2006';
   var UNLOCK_KEY = 'sawaed-unlocked';
   var lockScreen = document.getElementById('lockScreen');
@@ -485,7 +582,7 @@
   } else {
     input.focus();
   }
-})();
+});
 </script>
 
 <div class="wrap" id="appRoot" style="display:none;">
@@ -497,7 +594,10 @@
     </div>
   </header>
 
+  <div class="markaz-title">🕌 مركز حفصة</div>
   <div class="halaqah-tabs" id="halaqahTabs"></div>
+
+  <div id="drawSection"></div>
 
   <div class="lb-card">
     <div class="lb-head">
@@ -543,6 +643,13 @@
 </div>
 
 <div id="saveStatus"></div>
+
+<div class="draw-modal" id="drawModal">
+  <div class="draw-modal-card">
+    <div id="drawStage"></div>
+    <button class="btn btn-outline draw-close-btn" id="drawCloseBtn">إغلاق</button>
+  </div>
+</div>
 
 <script type="module">
   // --- الاتصال بقاعدة بيانات Firebase (Firestore) ---
@@ -636,16 +743,22 @@ const STORAGE_CONFIG_KEY = 'sawaed-config';
 const CONFIG_VERSION = 3; // bump when defaults below change, to auto-migrate saved configs
 const DEFAULT_GROUP_LINK = 'https://chat.whatsapp.com/JueOfFz9s5t6hEVsjv95e0';
 const DEFAULT_STUDENTS_H1 = [
-  { id: 's1', name: 'ادم', phone: '962785057157', totalPoints: 0, totalPagesNew: 0, totalPagesReview: 0 },
-  { id: 's2', name: 'حمزة الدلق', phone: '962796113171', totalPoints: 0, totalPagesNew: 0, totalPagesReview: 0 },
-  { id: 's3', name: 'سلطان', phone: '962788520839', totalPoints: 0, totalPagesNew: 0, totalPagesReview: 0 },
-  { id: 's4', name: 'تيم', phone: '962798625237', totalPoints: 0, totalPagesNew: 0, totalPagesReview: 0 },
-  { id: 's5', name: 'عثمان', phone: '962797851555', totalPoints: 0, totalPagesNew: 0, totalPagesReview: 0 },
-  { id: 's6', name: 'بكر', phone: '962797851555', totalPoints: 0, totalPagesNew: 0, totalPagesReview: 0 },
-  { id: 's7', name: 'عبدالرحمن', phone: '962797851555', totalPoints: 0, totalPagesNew: 0, totalPagesReview: 0 },
-  { id: 's8', name: 'يوسف', phone: '962787258710', totalPoints: 0, totalPagesNew: 0, totalPagesReview: 0 },
-  { id: 's9', name: '', phone: '', totalPoints: 0, totalPagesNew: 0, totalPagesReview: 0 } // احتياط
+  { id: 's1', name: 'ادم', phone: '962785057157', totalPoints: 0, totalPagesNew: 0, totalPagesReview: 0, balance: 0 },
+  { id: 's2', name: 'حمزة الدلق', phone: '962796113171', totalPoints: 0, totalPagesNew: 0, totalPagesReview: 0, balance: 0 },
+  { id: 's3', name: 'سلطان', phone: '962788520839', totalPoints: 0, totalPagesNew: 0, totalPagesReview: 0, balance: 0 },
+  { id: 's4', name: 'تيم', phone: '962798625237', totalPoints: 0, totalPagesNew: 0, totalPagesReview: 0, balance: 0 },
+  { id: 's5', name: 'عثمان', phone: '962797851555', totalPoints: 0, totalPagesNew: 0, totalPagesReview: 0, balance: 0 },
+  { id: 's6', name: 'بكر', phone: '962797851555', totalPoints: 0, totalPagesNew: 0, totalPagesReview: 0, balance: 0 },
+  { id: 's7', name: 'عبدالرحمن', phone: '962797851555', totalPoints: 0, totalPagesNew: 0, totalPagesReview: 0, balance: 0 },
+  { id: 's8', name: 'يوسف', phone: '962787258710', totalPoints: 0, totalPagesNew: 0, totalPagesReview: 0, balance: 0 },
+  { id: 's9', name: '', phone: '', totalPoints: 0, totalPagesNew: 0, totalPagesReview: 0, balance: 0 } // احتياط
 ];
+
+// صندوق سحب "رصيد" الخاص بشعبة سواعد الحفاظ (h1) بس. مجموع قيمته 15 دينار بالضبط:
+// 1×2د + 6×نص + 12×ربع + 30×15قرش + 25×10قروش = 2 + 3 + 3 + 4.5 + 2.5 = 15
+const DEFAULT_PRIZE_POOL = { '2': 1, '0.5': 6, '0.25': 12, '0.15': 30, '0.1': 25 };
+const DENOM_LABELS = { '2': '2 دينار', '0.5': 'نص دينار', '0.25': 'ربع دينار', '0.15': '15 قرش', '0.1': '10 قروش' };
+const DENOM_ORDER = ['2', '0.5', '0.25', '0.15', '0.1'];
 // طلاب حلقة "زاد الحفاظ" (الحلقة الثانية)
 const DEFAULT_STUDENTS_H2 = [
   { id: 'h2s1', name: 'وسام خليل', phone: '962787258710', totalPoints: 0, totalPagesNew: 0, totalPagesReview: 0 },
@@ -711,19 +824,19 @@ function renderHalaqahTabs(){
   halaqat.forEach(h=>{
     const btn = document.createElement('button');
     btn.className = 'halaqah-tab-btn' + (h.id === currentHalaqahId ? ' active' : '');
-    btn.textContent = h.name || 'حلقة بدون اسم';
+    btn.textContent = h.name || 'شعبة بدون اسم';
     btn.addEventListener('click', ()=>{ if(h.id !== currentHalaqahId) switchHalaqah(h.id); });
     wrap.appendChild(btn);
   });
   const addBtn = document.createElement('button');
   addBtn.className = 'halaqah-add-btn';
-  addBtn.textContent = '➕ حلقة جديدة';
+  addBtn.textContent = '➕ شعبة جديدة';
   addBtn.addEventListener('click', addNewHalaqah);
   wrap.appendChild(addBtn);
 }
 
 async function addNewHalaqah(){
-  const name = prompt('اسم الحلقة الجديدة؟');
+  const name = prompt('اسم الشعبة الجديدة؟');
   if(!name || !name.trim()) return;
   const maxNum = halaqat.reduce((max, h)=>{
     const m = /^h(\d+)$/.exec(h.id || '');
@@ -744,6 +857,7 @@ async function switchHalaqah(id){
   await loadEntries(currentDate);
   renderStudents();
   renderLeaderboard();
+  renderDrawSection();
 
   const logPanel = document.getElementById('logPanel');
   const toggleLogBtn = document.getElementById('toggleLogBtn');
@@ -793,7 +907,8 @@ async function loadConfig(){
   config = {
     version: CONFIG_VERSION,
     students: defaultStudentsFor(currentHalaqahId),
-    groupLink: currentHalaqahId === 'h1' ? DEFAULT_GROUP_LINK : ''
+    groupLink: currentHalaqahId === 'h1' ? DEFAULT_GROUP_LINK : '',
+    prizePool: currentHalaqahId === 'h1' ? { ...DEFAULT_PRIZE_POOL } : null
   };
 
   try{
@@ -820,7 +935,8 @@ async function loadConfig(){
         phone: (s.phone && s.phone.trim()) ? s.phone : d.phone,
         totalPoints: typeof s.totalPoints === 'number' ? s.totalPoints : 0,
         totalPagesNew: typeof s.totalPagesNew === 'number' ? s.totalPagesNew : 0,
-        totalPagesReview: typeof s.totalPagesReview === 'number' ? s.totalPagesReview : 0
+        totalPagesReview: typeof s.totalPagesReview === 'number' ? s.totalPagesReview : 0,
+        balance: typeof s.balance === 'number' ? s.balance : 0
       };
     });
     if(!config.groupLink || !config.groupLink.trim()){
@@ -832,8 +948,14 @@ async function loadConfig(){
 
   // safety net: guarantee every student object has the total fields, even outside migration
   config.students = (config.students || []).map(s => ({
-    totalPoints: 0, totalPagesNew: 0, totalPagesReview: 0, ...s
+    totalPoints: 0, totalPagesNew: 0, totalPagesReview: 0, balance: 0, ...s
   }));
+
+  // صندوق السحب خاص بـ h1 بس؛ لو ناقص (نسخة قديمة محفوظة قبل الميزة) نعبّيه بالقيم الافتراضية
+  if(currentHalaqahId === 'h1' && (!config.prizePool || typeof config.prizePool !== 'object')){
+    config.prizePool = { ...DEFAULT_PRIZE_POOL };
+    await saveConfig();
+  }
 }
 
 async function saveConfig(){
@@ -906,6 +1028,12 @@ function renderStudents(){
         </div>
         <input class="phone-input" data-id="${student.id}" data-field="phone" type="text" placeholder="9627xxxxxxxx" value="${student.phone || ''}">
       </div>
+      ${currentHalaqahId === 'h1' ? `
+      <div class="balance-line">
+        <span>💰 الرصيد: ${(student.balance||0).toFixed(2)} د.ا</span>
+        <button type="button" class="balance-reset-btn" data-reset-balance="${student.id}">تصفير</button>
+      </div>
+      ` : ''}
       <div class="attendance-row">
         <button type="button" class="att-btn present ${entry.attendance==='present'?'active':''}" data-att="present" data-id="${student.id}">حاضر ✓</button>
         <button type="button" class="att-btn absent ${entry.attendance==='absent'?'active':''}" data-att="absent" data-id="${student.id}">غائب ✕</button>
@@ -972,6 +1100,28 @@ function renderStudents(){
   list.querySelectorAll('[data-numfield]').forEach(el=>{
     el.addEventListener('change', onNumericFieldChange);
   });
+  list.querySelectorAll('[data-reset-balance]').forEach(btn=>{
+    btn.addEventListener('click', ()=>resetStudentBalance(btn.getAttribute('data-reset-balance')));
+  });
+}
+
+async function resetStudentBalance(studentId){
+  const student = config.students.find(s=>s.id===studentId);
+  if(!student) return;
+  const label = (student.name && student.name.trim()) ? student.name : 'هالطالب';
+  if(!confirm(`متأكدة إنك بدك تصفّري رصيد "${label}"؟`)) return;
+  student.balance = 0;
+  await saveConfig();
+  renderStudents();
+  showSaveStatus('✅ تم تصفير الرصيد', false);
+}
+
+async function resetAllBalances(){
+  if(!confirm('متأكدة إنك بدك تصفّري رصيد كل الطلاب بشعبة سواعد الحفاظ؟')) return;
+  config.students.forEach(s => { s.balance = 0; });
+  await saveConfig();
+  renderStudents();
+  showSaveStatus('✅ تم تصفير كل الأرصدة', false);
 }
 
 function numVal(v){
@@ -1589,6 +1739,114 @@ async function addNewStudent(){
   showSaveStatus('✅ تمت إضافة بطاقة طالب جديد، عبّي اسمه ورقمه', false);
 }
 
+function sleep(ms){ return new Promise(r => setTimeout(r, ms)); }
+
+function poolTotalValue(pool){
+  if(!pool) return 0;
+  return DENOM_ORDER.reduce((sum, k) => sum + (parseFloat(k) * (pool[k]||0)), 0);
+}
+function poolTotalCount(pool){
+  if(!pool) return 0;
+  return DENOM_ORDER.reduce((sum, k) => sum + (pool[k]||0), 0);
+}
+
+function weightedDraw(pool){
+  const entries = DENOM_ORDER.map(k => [k, pool[k]||0]).filter(([k,v]) => v > 0);
+  const total = entries.reduce((s,[,v]) => s+v, 0);
+  if(total <= 0) return null;
+  let r = Math.random() * total;
+  for(const [k,v] of entries){
+    if(r < v) return k;
+    r -= v;
+  }
+  return entries[entries.length-1][0];
+}
+
+function renderDrawSection(){
+  const wrap = document.getElementById('drawSection');
+  if(!wrap) return;
+  if(currentHalaqahId !== 'h1'){
+    wrap.innerHTML = '';
+    return;
+  }
+  const pool = config.prizePool || {};
+  const remainingValue = poolTotalValue(pool).toFixed(2);
+  const remainingCount = poolTotalCount(pool);
+  const named = config.students.filter(s => (s.name||'').trim());
+
+  wrap.innerHTML = `
+    <div class="draw-card">
+      <h3>🎁 صندوق سحب سواعد الحفاظ</h3>
+      <p class="draw-pool-line">المتبقي بالصندوق: ${remainingValue} د.ا (${remainingCount} قطعة)</p>
+      <div class="draw-row">
+        <select id="drawStudentSelect">
+          ${named.length ? named.map(s => `<option value="${s.id}">${s.name}</option>`).join('') : '<option value="">لا يوجد طلاب بعد</option>'}
+        </select>
+      </div>
+      <button class="btn btn-gold btn-block" id="startDrawBtn" ${(!named.length || remainingCount===0) ? 'disabled' : ''}>🎲 اسحب!</button>
+      <button class="btn btn-outline btn-block" style="margin-top:10px;" id="refillPoolBtn">🔄 تعبئة الصندوق من جديد</button>
+      <button class="lb-reset" style="margin-top:10px;width:100%;" id="resetBalancesBtn">تصفير كل الأرصدة 💰🔄</button>
+    </div>
+  `;
+
+  document.getElementById('startDrawBtn').addEventListener('click', ()=>{
+    const sel = document.getElementById('drawStudentSelect');
+    if(sel && sel.value) startDraw(sel.value);
+  });
+  document.getElementById('resetBalancesBtn').addEventListener('click', resetAllBalances);
+  document.getElementById('refillPoolBtn').addEventListener('click', refillPrizePool);
+}
+
+async function refillPrizePool(){
+  const current = poolTotalCount(config.prizePool || {});
+  const msg = current > 0
+    ? `لسا بالصندوق ${current} قطعة. متأكدة إنك بدك تعبّيه من جديد لكامل القيمة (15 دينار)؟`
+    : 'بدك تعبّي صندوق السحب من جديد لكامل القيمة (15 دينار)؟';
+  if(!confirm(msg)) return;
+  config.prizePool = { ...DEFAULT_PRIZE_POOL };
+  await saveConfig();
+  renderDrawSection();
+  showSaveStatus('✅ تم تعبئة صندوق السحب من جديد (15 د.ا)', false);
+}
+
+async function startDraw(studentId){
+  const student = config.students.find(s=>s.id===studentId);
+  if(!student) return;
+
+  const modal = document.getElementById('drawModal');
+  const stage = document.getElementById('drawStage');
+  modal.style.display = 'flex';
+
+  for(const n of [3,2,1]){
+    stage.innerHTML = `<div class="draw-count">${n}</div>`;
+    await sleep(650);
+  }
+
+  const pool = config.prizePool || {};
+  const denom = weightedDraw(pool);
+
+  if(!denom){
+    stage.innerHTML = '<div class="draw-empty">😢 نفذ صندوق السحب بالكامل!</div>';
+    showSaveStatus('🚨 نفذ صندوق السحب بالكامل! لازم تعبّيه من جديد.', true);
+    return;
+  }
+
+  pool[denom] = (pool[denom]||0) - 1;
+  config.prizePool = pool;
+  const val = parseFloat(denom);
+  student.balance = (student.balance||0) + val;
+  await saveConfig();
+
+  stage.innerHTML = `<div class="draw-result">🎉<br>${DENOM_LABELS[denom]}<br><span>لـ ${student.name}</span></div>`;
+
+  renderStudents();
+  renderDrawSection();
+
+  if(poolTotalCount(pool) === 0){
+    showSaveStatus('🚨 نفذ صندوق السحب بالكامل! لازم تعبّيه من جديد.', true);
+  }
+}
+
 async function onDateChange(){
   currentDate = document.getElementById('dateInput').value || currentDate;
   document.getElementById('dayTag').textContent = fmtDateLabel(currentDate);
@@ -1610,6 +1868,14 @@ async function init(){
   document.getElementById('addStudentBtn').addEventListener('click', addNewStudent);
   initLeaderboardTabs();
   renderLeaderboard();
+  renderDrawSection();
+
+  const drawCloseBtn = document.getElementById('drawCloseBtn');
+  if(drawCloseBtn){
+    drawCloseBtn.addEventListener('click', ()=>{
+      document.getElementById('drawModal').style.display = 'none';
+    });
+  }
 
   const logPanel = document.getElementById('logPanel');
   const toggleLogBtn = document.getElementById('toggleLogBtn');

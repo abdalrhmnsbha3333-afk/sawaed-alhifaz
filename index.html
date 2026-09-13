@@ -1085,27 +1085,33 @@ function canvasToBlob(canvas){
   return new Promise(resolve => canvas.toBlob(b => resolve(b), 'image/png'));
 }
 
-// جوا معاينة كلود، سياسة الصلاحيات (Permissions-Policy) بتمنع الكتابة
-// على الحافظة بشكل كامل — مش مشكلة تركيز أو ترتيب كود. أول ما نكتشف هيك،
-// بنعلّمها وما نعيد المحاولة، ونروح على طول لتحميل الصورة بالمرات الجاية.
+// بعض المتصفحات (خصوصًا سفاري بالآيفون) بتلغي صلاحية "لمسة المستخدم" لو
+// انتظرنا (await) قبل استدعاء أمر النسخ. الحل: نستدعي navigator.clipboard.write
+// فورًا وبشكل متزامن (بدون أي await قبله)، ونمرّرله وعد (Promise) بالصورة
+// بدل ما ننتظرها تجهز أول — هيك بيضل الاستدعاء نفسه "ضمن" نفس لمسة المستخدم
+// حتى لو تجهيز الصورة أخذ وقت شوي بالخلفية.
 let clipboardBlocked = false;
 
-async function copyImageToClipboard(canvas){
-  if(clipboardBlocked) return false;
+function copyCanvasToClipboard(canvasPromise){
+  if(clipboardBlocked) return Promise.resolve(false);
   if(!navigator.clipboard || typeof window.ClipboardItem === 'undefined'){
     clipboardBlocked = true;
-    return false;
+    return Promise.resolve(false);
   }
   try{
-    const blob = await canvasToBlob(canvas);
-    await navigator.clipboard.write([ new ClipboardItem({ 'image/png': blob }) ]);
-    return true;
+    const blobPromise = canvasPromise.then(canvas => canvasToBlob(canvas));
+    const item = new ClipboardItem({ 'image/png': blobPromise });
+    return navigator.clipboard.write([item]).then(()=>true).catch(e=>{
+      if(e && e.name === 'NotAllowedError'){
+        // ممنوعة فعليًا بسياسة صلاحيات المتصفح/الصفحة، ما رح تنجح بعدين هالجلسة
+        clipboardBlocked = true;
+      }
+      console.warn('clipboard copy not available, will download instead:', e && e.message);
+      return false;
+    });
   }catch(e){
-    if(e && e.name === 'NotAllowedError'){
-      clipboardBlocked = true; // ممنوعة بسياسة الصلاحيات هون، ما رح تنجح بعدين
-    }
     console.warn('clipboard copy not available, will download instead:', e && e.message);
-    return false;
+    return Promise.resolve(false);
   }
 }
 
@@ -1138,28 +1144,26 @@ async function sendToStudent(studentId){
     return;
   }
 
-  // منفتح تبويب فاضي فورًا بنفس ضغطة الزر (عشان المتصفح ما يحظره كـ"نافذة منبثقة")،
-  // وبنأخر توجيهه لواتساب لحد ما ننسخ الصورة للحافظة. هيك صفحتنا تضل هي
-  // "المركّزة" وقت النسخ، ولما ننتقل لواتساب بعدين النسخة تكون خلصت وصارت بالحافظة.
-  const waWindow = window.open('', '_blank');
-
   const entry = getEntry(studentId);
-  const canvas = await makeStudentCanvas(student, entry, currentDate);
-  const copied = await copyImageToClipboard(canvas);
+
+  // هون بالضبط أهم سطر: بينفذ فورًا ومتزامن، بدون أي await قبله، عشان يضل
+  // "جوا" نفس لمسة المستخدم. ما منفتح أي نافذة قبل ما تخلص عملية النسخ تمامًا،
+  // عشان فتح نافذة ثانية ممكن يسحب تركيز الصفحة ويفشّل النسخ بالمنتصف.
+  const canvasPromise = makeStudentCanvas(student, entry, currentDate);
+  const clipboardPromise = copyCanvasToClipboard(canvasPromise);
+
+  const canvas = await canvasPromise;
+  const copied = await clipboardPromise;
 
   const text = encodeURIComponent(`جدول متابعة التسميع - ${student.name} - ${currentDate}`);
   const waLink = `https://wa.me/${phone}?text=${text}`;
-  if(waWindow && !waWindow.closed){
-    waWindow.location.href = waLink;
-  } else {
-    window.open(waLink, '_blank');
-  }
+  window.open(waLink, '_blank');
 
   if(copied){
     alert('✅ الصورة انسخت! روحي على واتساب واعملي لصق (Ctrl+V بالكمبيوتر، أو اضغطي مطولاً على مربع الكتابة واختاري "لصق" بالموبايل).');
   } else {
     await downloadCanvas(canvas, `${student.name}-${currentDate}.png`);
-    alert('المتصفح ما بيدعم النسخ التلقائي للصورة، فنزّلتها إلك — أرفقيها يدويًا من التنزيلات بمحادثة واتساب.');
+    alert('المتصفح ما بيدعم النسخ التلقائي للصورة هالمرة، فنزّلتها إلك — أرفقيها يدويًا من التنزيلات بمحادثة واتساب.');
   }
 }
 
@@ -1170,18 +1174,13 @@ async function sendToGroup(){
     return;
   }
 
-  // نفس منطق النسخ قبل الفتح: تبويب فاضي فورًا، وبعدين نوجّهه للمجموعة
-  // بعد ما تخلص عملية نسخ الصورة للحافظة.
-  const waWindow = window.open('', '_blank');
+  const canvasPromise = makeGroupCanvas(currentDate);
+  const clipboardPromise = copyCanvasToClipboard(canvasPromise);
 
-  const canvas = await makeGroupCanvas(currentDate);
-  const copied = await copyImageToClipboard(canvas);
+  const canvas = await canvasPromise;
+  const copied = await clipboardPromise;
 
-  if(waWindow && !waWindow.closed){
-    waWindow.location.href = link;
-  } else {
-    window.open(link, '_blank');
-  }
+  window.open(link, '_blank');
 
   if(copied){
     alert('✅ الصورة انسخت! روحي على المجموعة واعملي لصق (Ctrl+V بالكمبيوتر، أو اضغطي مطولاً على مربع الكتابة واختاري "لصق" بالموبايل).');

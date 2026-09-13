@@ -709,6 +709,7 @@ function renderStudents(){
       <p class="totals-line">المجموع الكلي — نقاط: ${student.totalPoints||0} · صفحات حفظ: ${student.totalPagesNew||0} · صفحات مراجعة: ${student.totalPagesReview||0}</p>
       <div class="student-foot">
         <button class="btn btn-green" data-send="${student.id}">إرسال لواتساب الطالب 📤</button>
+        <button class="btn btn-outline" data-delete="${student.id}" title="حذف الطالب" style="flex:0 0 auto;padding:0 14px;color:#a4453a;border-color:#a4453a;">🗑️</button>
       </div>
     `;
     list.appendChild(card);
@@ -729,6 +730,9 @@ function renderStudents(){
   });
   list.querySelectorAll('[data-send]').forEach(btn=>{
     btn.addEventListener('click', ()=>sendToStudent(btn.getAttribute('data-send')));
+  });
+  list.querySelectorAll('[data-delete]').forEach(btn=>{
+    btn.addEventListener('click', ()=>deleteStudent(btn.getAttribute('data-delete')));
   });
   list.querySelectorAll('[data-att]').forEach(btn=>{
     btn.addEventListener('click', onAttendanceClick);
@@ -1317,6 +1321,22 @@ async function resetPagesTotals(){
   renderLeaderboard();
   renderStudents();
   showSaveStatus('✅ تم تصفير صفحات الحفظ والمراجعة', false);
+}
+
+async function deleteStudent(studentId){
+  const student = config.students.find(s=>s.id===studentId);
+  if(!student) return;
+  const label = (student.name && student.name.trim()) ? student.name : 'هالطالب (بدون اسم)';
+  if(!confirm(`متأكدة إنك بدك تحذفي "${label}"؟ هاد الإجراء ما بينرجع، وبينحذف معه كل نقاطه وصفحاته المتراكمة.`)){
+    return;
+  }
+  config.students = config.students.filter(s => s.id !== studentId);
+  delete entries[studentId];
+  await saveConfig();
+  await saveEntries(currentDate);
+  renderStudents();
+  renderLeaderboard();
+  showSaveStatus('🗑️ تم حذف الطالب', false);
 }
 
 function nextStudentId(){

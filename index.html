@@ -342,6 +342,30 @@
     font-weight:700;
     cursor:pointer;
   }
+  .halaqah-tabs{display:flex;gap:6px;margin:0 0 14px;flex-wrap:wrap;}
+  .halaqah-tab-btn{
+    border:1.5px solid var(--sand-deep);
+    background:var(--sand);
+    color:#6b7a70;
+    border-radius:9px;
+    padding:8px 14px;
+    font-family:inherit;
+    font-weight:700;
+    font-size:13px;
+    cursor:pointer;
+  }
+  .halaqah-tab-btn.active{background:var(--green);border-color:var(--green);color:#fff;}
+  .halaqah-add-btn{
+    border:1.5px dashed var(--sand-deep);
+    background:transparent;
+    color:#6b7a70;
+    border-radius:9px;
+    padding:8px 14px;
+    font-family:inherit;
+    font-weight:700;
+    font-size:13px;
+    cursor:pointer;
+  }
   .lb-tabs{display:flex;gap:6px;margin-bottom:10px;}
   .lb-tab-btn{
     flex:1;
@@ -384,6 +408,8 @@
       <p>متابعة يومية للتسميع الجديد ومراجعة الحفظ</p>
     </div>
   </header>
+
+  <div class="halaqah-tabs" id="halaqahTabs"></div>
 
   <div class="lb-card">
     <div class="lb-head">
@@ -521,7 +547,7 @@
 const STORAGE_CONFIG_KEY = 'sawaed-config';
 const CONFIG_VERSION = 3; // bump when defaults below change, to auto-migrate saved configs
 const DEFAULT_GROUP_LINK = 'https://chat.whatsapp.com/JueOfFz9s5t6hEVsjv95e0';
-const DEFAULT_STUDENTS = [
+const DEFAULT_STUDENTS_H1 = [
   { id: 's1', name: 'ادم', phone: '962785057157', totalPoints: 0, totalPagesNew: 0, totalPagesReview: 0 },
   { id: 's2', name: 'حمزة الدلق', phone: '962796113171', totalPoints: 0, totalPagesNew: 0, totalPagesReview: 0 },
   { id: 's3', name: 'سلطان', phone: '962788520839', totalPoints: 0, totalPagesNew: 0, totalPagesReview: 0 },
@@ -532,8 +558,112 @@ const DEFAULT_STUDENTS = [
   { id: 's8', name: 'يوسف', phone: '962787258710', totalPoints: 0, totalPagesNew: 0, totalPagesReview: 0 },
   { id: 's9', name: '', phone: '', totalPoints: 0, totalPagesNew: 0, totalPagesReview: 0 } // احتياط
 ];
+// طلاب حلقة "زاد الحفاظ" (الحلقة الثانية)
+const DEFAULT_STUDENTS_H2 = [
+  { id: 'h2s1', name: 'وسام خليل', phone: '962787258710', totalPoints: 0, totalPagesNew: 0, totalPagesReview: 0 },
+  { id: 'h2s2', name: 'اوس الفيومي', phone: '962792760068', totalPoints: 0, totalPagesNew: 0, totalPagesReview: 0 },
+  { id: 'h2s3', name: 'عبد الله رداد', phone: '962780360733', totalPoints: 0, totalPagesNew: 0, totalPagesReview: 0 },
+  { id: 'h2s4', name: 'يمان عميش', phone: '962798107194', totalPoints: 0, totalPagesNew: 0, totalPagesReview: 0 },
+  { id: 'h2s5', name: 'مالك', phone: '962785413072', totalPoints: 0, totalPagesNew: 0, totalPagesReview: 0 },
+  { id: 'h2s6', name: 'ليث مطالقة', phone: '962770997655', totalPoints: 0, totalPagesNew: 0, totalPagesReview: 0 },
+  { id: 'h2s7', name: 'أحمد غسان', phone: '962788884051', totalPoints: 0, totalPagesNew: 0, totalPagesReview: 0 },
+  { id: 'h2s8', name: 'عمر أبو الريش', phone: '962796011942', totalPoints: 0, totalPagesNew: 0, totalPagesReview: 0 },
+  { id: 'h2s9', name: 'رشاد عميرة', phone: '962788355763', totalPoints: 0, totalPagesNew: 0, totalPagesReview: 0 },
+  { id: 'h2s10', name: 'حمزة النادي', phone: '962779202586', totalPoints: 0, totalPagesNew: 0, totalPagesReview: 0 },
+  { id: 'h2s11', name: '', phone: '', totalPoints: 0, totalPagesNew: 0, totalPagesReview: 0 } // احتياط
+];
 
-let config = { version: CONFIG_VERSION, students: DEFAULT_STUDENTS, groupLink: DEFAULT_GROUP_LINK };
+// --- دعم تعدد الحلقات ---
+// كل حلقة إلها معرّف id وتخزينها منفصل بالكامل (طلاب، نقاط، رابط مجموعة، جدول أيام).
+// الحلقة "h1" هي نفسها البيانات القديمة يلي كانت موجودة قبل إضافة هالميزة،
+// فبتضل تستخدم نفس المفاتيح القديمة بالضبط (بدون أي هجرة بيانات أو خطر ضياع).
+const HALAQAT_LIST_KEY = 'sawaed-halaqat-list';
+const CURRENT_HALAQAH_LS_KEY = 'sawaed-current-halaqah'; // تفضيل محلي بالجهاز بس، مش بيانات مشتركة
+const DEFAULT_HALAQAT = [
+  { id: 'h1', name: 'سواعد الحفاظ' },
+  { id: 'h2', name: 'زاد الحفاظ' }
+];
+
+function defaultStudentsFor(halaqahId){
+  if(halaqahId === 'h1') return DEFAULT_STUDENTS_H1;
+  if(halaqahId === 'h2') return DEFAULT_STUDENTS_H2;
+  return [ { id: halaqahId + 's1', name: '', phone: '', totalPoints: 0, totalPagesNew: 0, totalPagesReview: 0 } ];
+}
+
+function configKey(){
+  return currentHalaqahId === 'h1' ? STORAGE_CONFIG_KEY : (STORAGE_CONFIG_KEY + ':' + currentHalaqahId);
+}
+
+let halaqat = DEFAULT_HALAQAT.slice();
+let currentHalaqahId = localStorage.getItem(CURRENT_HALAQAH_LS_KEY) || 'h1';
+
+async function loadHalaqat(){
+  try{
+    const res = await window.storage.get(HALAQAT_LIST_KEY, false);
+    if(res && res.value){
+      const parsed = JSON.parse(res.value);
+      if(Array.isArray(parsed) && parsed.length){ halaqat = parsed; return; }
+    }
+  }catch(e){ /* أول مرة، ما في قائمة حلقات محفوظة بعد */ }
+  halaqat = DEFAULT_HALAQAT.slice();
+  await safeStorageSet(HALAQAT_LIST_KEY, JSON.stringify(halaqat));
+}
+
+async function saveHalaqat(){
+  const ok = await safeStorageSet(HALAQAT_LIST_KEY, JSON.stringify(halaqat));
+  if(!ok){
+    showSaveStatus('⚠️ تعذّر حفظ تعديل الحلقات، جرّبي مرة ثانية', true);
+  }
+}
+
+function renderHalaqahTabs(){
+  const wrap = document.getElementById('halaqahTabs');
+  if(!wrap) return;
+  wrap.innerHTML = '';
+  halaqat.forEach(h=>{
+    const btn = document.createElement('button');
+    btn.className = 'halaqah-tab-btn' + (h.id === currentHalaqahId ? ' active' : '');
+    btn.textContent = h.name || 'حلقة بدون اسم';
+    btn.addEventListener('click', ()=>{ if(h.id !== currentHalaqahId) switchHalaqah(h.id); });
+    wrap.appendChild(btn);
+  });
+  const addBtn = document.createElement('button');
+  addBtn.className = 'halaqah-add-btn';
+  addBtn.textContent = '➕ حلقة جديدة';
+  addBtn.addEventListener('click', addNewHalaqah);
+  wrap.appendChild(addBtn);
+}
+
+async function addNewHalaqah(){
+  const name = prompt('اسم الحلقة الجديدة؟');
+  if(!name || !name.trim()) return;
+  const maxNum = halaqat.reduce((max, h)=>{
+    const m = /^h(\d+)$/.exec(h.id || '');
+    return m ? Math.max(max, parseInt(m[1],10)) : max;
+  }, 0);
+  const id = 'h' + (maxNum + 1);
+  halaqat.push({ id, name: name.trim() });
+  await saveHalaqat();
+  await switchHalaqah(id);
+}
+
+async function switchHalaqah(id){
+  currentHalaqahId = id;
+  localStorage.setItem(CURRENT_HALAQAH_LS_KEY, id);
+  renderHalaqahTabs();
+  await loadConfig();
+  document.getElementById('groupLinkInput').value = config.groupLink || '';
+  await loadEntries(currentDate);
+  renderStudents();
+  renderLeaderboard();
+
+  const logPanel = document.getElementById('logPanel');
+  const toggleLogBtn = document.getElementById('toggleLogBtn');
+  if(logPanel){ logPanel.style.display = 'none'; logPanel.innerHTML = ''; }
+  if(toggleLogBtn){ toggleLogBtn.textContent = 'عرض السجل'; }
+}
+
+let config = { version: CONFIG_VERSION, students: DEFAULT_STUDENTS_H1, groupLink: DEFAULT_GROUP_LINK };
 let currentDate = new Date().toISOString().slice(0,10);
 let entries = {}; // { studentId: {new, review, notes} }
 
@@ -570,21 +700,29 @@ async function safeStorageSet(key, value, attempts){
 }
 
 async function loadConfig(){
+  // نصفّر config لقيم افتراضية خاصة بالحلقة الحالية أول، عشان ما تظل بيانات
+  // حلقة قديمة عالقة لو الحلقة الجديدة ما عندها شي محفوظ بعد.
+  config = {
+    version: CONFIG_VERSION,
+    students: defaultStudentsFor(currentHalaqahId),
+    groupLink: currentHalaqahId === 'h1' ? DEFAULT_GROUP_LINK : ''
+  };
+
   try{
-    const res = await window.storage.get(STORAGE_CONFIG_KEY, false);
+    const res = await window.storage.get(configKey(), false);
     if(res && res.value){
       const parsed = JSON.parse(res.value);
       if(parsed && Array.isArray(parsed.students) && parsed.students.length){
         config = parsed;
       }
     }
-  }catch(e){ /* first run, use defaults */ }
+  }catch(e){ /* أول مرة لهاي الحلقة، منستخدم الافتراضي */ }
 
-  // one-time migration: bring in the real phone numbers / group link
-  // for students who don't already have a custom phone saved
-  if(!config.version || config.version < CONFIG_VERSION){
+  // one-time migration: بس للحلقة الأولى (h1) يلي فيها بيانات قديمة محفوظة
+  // من قبل إضافة ميزة تعدد الحلقات
+  if(currentHalaqahId === 'h1' && (!config.version || config.version < CONFIG_VERSION)){
     const defaultsById = {};
-    DEFAULT_STUDENTS.forEach(s => defaultsById[s.id] = s);
+    DEFAULT_STUDENTS_H1.forEach(s => defaultsById[s.id] = s);
     config.students = (config.students || []).map(s => {
       const d = defaultsById[s.id];
       if(!d) return s;
@@ -611,13 +749,19 @@ async function loadConfig(){
 }
 
 async function saveConfig(){
-  const ok = await safeStorageSet(STORAGE_CONFIG_KEY, JSON.stringify(config));
+  const ok = await safeStorageSet(configKey(), JSON.stringify(config));
   if(!ok){
     showSaveStatus('⚠️ تعذّر حفظ التعديل (اسم/رقم)، جرّبي كتابته مرة ثانية', true);
   }
 }
 
-function entryKey(dateStr){ return 'sawaed-entries:' + dateStr; }
+function entryKey(dateStr){
+  return currentHalaqahId === 'h1' ? ('sawaed-entries:' + dateStr) : ('sawaed-entries-' + currentHalaqahId + ':' + dateStr);
+}
+
+function logKeyPrefix(){
+  return currentHalaqahId === 'h1' ? 'sawaed-entries:' : ('sawaed-entries-' + currentHalaqahId + ':');
+}
 
 async function loadEntries(dateStr){
   try{
@@ -1201,10 +1345,11 @@ function nameById(id){
 
 async function loadLogDates(){
   try{
-    const res = await window.storage.list('sawaed-entries:', false);
+    const prefix = logKeyPrefix();
+    const res = await window.storage.list(prefix, false);
     if(res && res.keys){
       return res.keys
-        .map(k => k.replace('sawaed-entries:',''))
+        .map(k => k.replace(prefix,''))
         .sort()
         .reverse();
     }
@@ -1242,7 +1387,7 @@ async function renderLogPanel(){
       if(!body.dataset.loaded){
         let dayEntries = {};
         try{
-          const res = await window.storage.get('sawaed-entries:'+dateStr, false);
+          const res = await window.storage.get(entryKey(dateStr), false);
           if(res && res.value) dayEntries = JSON.parse(res.value);
         }catch(e){}
         const rows = Object.keys(dayEntries).map(id=>{
@@ -1364,6 +1509,8 @@ async function onDateChange(){
 }
 
 async function init(){
+  await loadHalaqat();
+  renderHalaqahTabs();
   await loadConfig();
   document.getElementById('groupLinkInput').value = config.groupLink || '';
   document.getElementById('groupLinkInput').addEventListener('change', async (e)=>{
